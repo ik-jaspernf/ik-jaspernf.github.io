@@ -1,234 +1,91 @@
 <!DOCTYPE html>
-<html  >
+<html lang="en">
 <head>
-  <!-- Site made with Mobirise Website Builder v5.9.18, https://mobirise.com -->
-  <meta charset="UTF-8">
-  <meta http-equiv="X-UA-Compatible" content="IE=edge">
-  <meta name="generator" content="Mobirise v5.9.18, mobirise.com">
-  <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1">
-  <link rel="shortcut icon" href="assets/images/logo5.png" type="image/x-icon">
-  <meta name="description" content="">
-  
-  
-  <title>Home</title>
-  <link rel="stylesheet" href="assets/web/assets/mobirise-icons2/mobirise2.css">
-  <link rel="stylesheet" href="assets/web/assets/mobirise-icons/mobirise-icons.css">
-  <link rel="stylesheet" href="assets/bootstrap/css/bootstrap.min.css">
-  <link rel="stylesheet" href="assets/bootstrap/css/bootstrap-grid.min.css">
-  <link rel="stylesheet" href="assets/bootstrap/css/bootstrap-reboot.min.css">
-  <link rel="stylesheet" href="assets/theme/css/style.css">
-  <link rel="preload" href="https://fonts.googleapis.com/css?family=DM+Sans:100,200,300,400,500,600,700,800,900,100i,200i,300i,400i,500i,600i,700i,800i,900i&display=swap" as="style" onload="this.onload=null;this.rel='stylesheet'">
-  <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css?family=DM+Sans:100,200,300,400,500,600,700,800,900,100i,200i,300i,400i,500i,600i,700i,800i,900i&display=swap"></noscript>
-  <link rel="preload" as="style" href="assets/mobirise/css/mbr-additional.css?v=n6URGI"><link rel="stylesheet" href="assets/mobirise/css/mbr-additional.css?v=n6URGI" type="text/css">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Evnex Installation Survey</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: sans-serif; background: #f5f5f5; }
 
-  
-  
-  
+    #loading {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      gap: 12px;
+      color: #555;
+    }
+
+    #error {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      gap: 12px;
+      color: #c00;
+      text-align: center;
+      padding: 24px;
+    }
+
+    #error p { font-size: 0.9rem; color: #555; max-width: 400px; }
+
+    iframe {
+      display: none;
+      width: 100%;
+      height: 100vh;
+      border: none;
+    }
+  </style>
 </head>
 <body>
-  
-  <section data-bs-version="5.1" class="features4 factm5 cid-topuEVL4zV" id="afeatures4-1">
 
-    
+  <div id="loading">
+    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#999" stroke-width="2">
+      <circle cx="12" cy="12" r="10"/>
+      <path d="M12 6v6l4 2"/>
+    </svg>
+    <span>Loading your survey…</span>
+  </div>
 
-    
-    <div class="mbr-overlay" style="opacity: 0.8; background-color: rgb(50, 189, 152);">
-    </div>
-    <div class="container">
-        <div class="row justify-content-center">
-            <div class="main-wrap col-12 col-lg-12">
-                <div class="img-col">
-                    <div class="image-wrapper">
-                        <img src="assets/images/fabella-jasper-nichol-1-1100x1100.jpeg" alt="Mobirise Website Builder">
-                    </div>
-                </div>
+  <div id="error">
+    <strong>Missing deal ID</strong>
+    <p>This page requires a <code>dealId</code> in the URL.<br>
+    Example: <code>?dealId=ABC123&amp;installationType=tier2</code></p>
+  </div>
 
-                <div class="card-col">
-                    <div class="card-wrapper">
-                        <h6 class="card-title mbr-fonts-style display-5"><strong>Jasper Nichol M. Fabella</strong></h6>
-                        <p class="mbr-text mbr-fonts-style display-4">Data Engineer</p>
-                        <div class="items-wrap">
-                            <div class="item">
-                                <h6 class="item-title mbr-fonts-style display-5">
-                                    <strong>Age:</strong></h6>
-                                <p class="item-text mbr-fonts-style display-5">31</p>
-                            </div>
-                            <div class="item">
-                                <h6 class="item-title mbr-fonts-style display-5">
-                                    <strong>Phone:</strong>
-                                </h6>
-                                <p class="item-text mbr-fonts-style display-5">
-                                    +639509181109</p>
-                            </div>
-                            <div class="item">
-                                <h6 class="item-title mbr-fonts-style display-5">
-                                    <strong>Email:</strong>
-                                </h6>
-                                <p class="item-text mbr-fonts-style display-5">jasper@ikaros.io</p>
-                            </div>
-                            <div class="item">
-                                <h6 class="item-title mbr-fonts-style display-5">
-                                    <strong>Address:</strong>
-                                </h6>
-                                <p class="item-text mbr-fonts-style display-5">474F I Lindayag Street Pineda Pasig</p>
-                            </div>
-                            
-                            
-                        </div>
-                        
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</section>
+  <iframe id="tally-frame" title="Evnex Installation Survey" allowfullscreen></iframe>
 
-<section data-bs-version="5.1" class="header1 factm5 cid-topwFWlOlL" id="aheader2-3">
+  <script>
+    const FORM_ID = "9qd5op";
+    const BASE_URL = `https://tally.so/r/${FORM_ID}`;
 
-    
+    const params = new URLSearchParams(window.location.search);
+    const dealId = params.get("dealId");
+    const installationType = params.get("installationType") || "tier1";
 
-    
-    
-    <div class="container">
-        <div class="row justify-content-center">
-            <div class="col-12 col-lg-9">
-                
-                <h4 class="mbr-subtitle mbr-fonts-style align-center mb-0 display-2">Hi_</h4>
-                <p class="mbr-text mbr-fonts-style align-center mb-0 display-7">My name is Jasper Nichol Fabella I am a Data Engineer @ Ikaros</p>
-                
-            </div>
-        </div>
-    </div>
-</section>
+    const loading = document.getElementById("loading");
+    const error = document.getElementById("error");
+    const frame = document.getElementById("tally-frame");
 
-<section data-bs-version="5.1" class="list1 factm5 cid-topybGt0lg" id="alist1-6">
+    if (!dealId) {
+      loading.style.display = "none";
+      error.style.display = "flex";
+    } else {
+      const tallyParams = new URLSearchParams({
+        installationType,
+        dealId,
+      });
 
-    
+      frame.src = `${BASE_URL}?${tallyParams}`;
+      frame.onload = () => {
+        loading.style.display = "none";
+        frame.style.display = "block";
+      };
+    }
+  </script>
 
-    
-    
-    
-    <div class="container">
-        
-            <div class="row justify-content-center">
-                <div class="col-12 col-lg-12">
-                    <div class="section-head ">
-                        <h3 class="mbr-section-title mb-0 align-center mbr-fonts-style display-2"><strong>GENERAL SKILLS</strong></h3>
-                        
-                    </div>
-                    
-                    <div id="bootstrap-toggle" class="toggle-panel accordionStyles tab-content">
-                        <div class="card">
-                            <div class="card-header" role="tab" id="headingOne">
-                                <a role="button" class="collapsed panel-title text-black" data-toggle="collapse" data-bs-toggle="collapse" data-core="" href="#collapse1_6" aria-expanded="false" aria-controls="collapse1">
-                                    <div class="panel-title-icon">
-                                        <span></span>
-                                        <span></span>
-                                    </div>
-                                    <h6 class="panel-title-edit mbr-fonts-style mb-0 display-5">
-                                        Data Engineering<br></h6>
-                                    <span class="sign mbr-iconfont mbri-arrow-down"></span>
-                                </a>
-                            </div>
-                            <div id="collapse1_6" class="panel-collapse noScroll collapse" role="tabpanel" aria-labelledby="headingOne">
-                                <div class="panel-body">
-                                    <p class="mbr-fonts-style panel-text display-7">
-                                        As a data engineer, I specialize in designing and optimizing data pipelines, managing and integrating large datasets, and ensuring efficient data flow. My expertise spans across various SQL flavors, allowing me to work with different databases to ensure scalable and high-performing solutions tailored to business needs.</p>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="card">
-                            <div class="card-header" role="tab" id="headingTwo">
-                                <a role="button" class="collapsed panel-title text-black" data-toggle="collapse" data-bs-toggle="collapse" data-core="" href="#collapse2_6" aria-expanded="false" aria-controls="collapse2">
-                                    <div class="panel-title-icon">
-                                        <span></span>
-                                        <span></span>
-                                    </div>
-                                    <h6 class="panel-title-edit mbr-fonts-style mb-0 display-5">
-                                        Data Analytics</h6>
-                                    <span class="sign mbr-iconfont mbri-arrow-down"></span>
-                                </a>
-
-                            </div>
-                            <div id="collapse2_6" class="panel-collapse noScroll collapse" role="tabpanel" aria-labelledby="headingTwo">
-                                <div class="panel-body">
-                                    <p class="mbr-fonts-style panel-text display-7">
-                                        As a data analytics professional, I focus on transforming data into actionable insights by creating visualizations like charts and graphs. With experience in business intelligence, I provide clear, data-driven reports that help organizations make informed decisions and optimize performance.
-                                    </p>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="card">
-                            <div class="card-header" role="tab" id="headingThree">
-                                <a role="button" class="collapsed panel-title text-black" data-toggle="collapse" data-bs-toggle="collapse" data-core="" href="#collapse3_6" aria-expanded="false" aria-controls="collapse3">
-                                    <div class="panel-title-icon">
-                                        <span></span>
-                                        <span></span>
-                                    </div>
-                                    <h6 class="panel-title-edit mbr-fonts-style mb-0 display-5">Python Automation</h6>
-                                    <span class="sign mbr-iconfont mbri-arrow-down"></span>
-                                </a>
-                            </div>
-                            <div id="collapse3_6" class="panel-collapse noScroll collapse" role="tabpanel" aria-labelledby="headingThree">
-                                <div class="panel-body">
-                                    <p class="mbr-fonts-style panel-text display-7">
-                                        I am an expert in Python automation, with a focus on data extraction, data cleaning, web automation, and web scraping. I build efficient automated workflows that streamline data collection, transformation, and integration from various sources, ensuring high-quality, actionable data for business processes.
-                                    </p>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="card">
-                            <div class="card-header" role="tab" id="headingThree">
-                                <a role="button" class="collapsed panel-title text-black" data-toggle="collapse" data-bs-toggle="collapse" data-core="" href="#collapse4_6" aria-expanded="false" aria-controls="collapse4">
-                                    <div class="panel-title-icon">
-                                        <span></span>
-                                        <span></span>
-                                    </div>
-                                    <h6 class="panel-title-edit mbr-fonts-style mb-0 display-5">
-                                        Web Development</h6>
-                                    <span class="sign mbr-iconfont mbri-arrow-down"></span>
-                                </a>
-                            </div>
-                            <div id="collapse4_6" class="panel-collapse noScroll collapse" role="tabpanel" aria-labelledby="headingThree">
-                                <div class="panel-body">
-                                    <p class="mbr-fonts-style panel-text display-7">
-                                        I am experienced in full stack web development, proficient in building dynamic and scalable applications using Next.js for frontend development and Django for backend services. I specialize in creating seamless user experiences and robust server-side solutions.
-                                    </p>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        
-                    </div>
-                </div>
-            </div>
-        </div>
-</section>
-
-<section data-bs-version="5.1" class="footer2 factm5 cid-toptNM02bt" once="footers" id="afooter2-0">
-
-    
-
-    
-    <div class="container-fluid">
-        <div class="media-container-row align-center mbr-white">
-            <div class="col-12">
-                <p class="mbr-text mb-0 mbr-fonts-style align-center display-7">
-                    © Copyright 2024 - All Rights Reserved
-                </p>
-            </div>
-        </div>
-    </div>
-</section>
-
-
-<script src="assets/bootstrap/js/bootstrap.bundle.min.js"></script>
-  <script src="assets/smoothscroll/smooth-scroll.js"></script>
-  <script src="assets/ytplayer/index.js"></script>
-  <script src="assets/mbr-switch-arrow/mbr-switch-arrow.js"></script>
-  <script src="assets/theme/js/script.js"></script>
-  
-  
-  
 </body>
 </html>
