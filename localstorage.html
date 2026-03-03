@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Why localStorage fails across devices</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: sans-serif; background: #f5f5f5; padding: 32px 16px; }
+    .page { max-width: 560px; margin: 0 auto; }
+    h1 { font-size: 1.1rem; margin-bottom: 6px; }
+    .intro { font-size: 0.85rem; color: #666; margin-bottom: 24px; }
+
+    .block {
+      background: #fff;
+      border-radius: 10px;
+      padding: 20px;
+      margin-bottom: 14px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.07);
+    }
+    .block h2 { font-size: 0.85rem; font-weight: 600; margin-bottom: 10px; color: #333; }
+    pre {
+      background: #f0f0f0;
+      border-radius: 6px;
+      padding: 10px 12px;
+      font-size: 0.76rem;
+      white-space: pre-wrap;
+      margin-bottom: 10px;
+    }
+    .result {
+      font-size: 0.82rem;
+      padding: 10px 14px;
+      border-radius: 6px;
+    }
+    .ok   { background: #e6f4ea; color: #1a7f37; }
+    .fail { background: #fdecea; color: #b00; }
+    .warn { background: #fff8e1; color: #8a6000; }
+  </style>
+</head>
+<body>
+<div class="page">
+  <h1>Why localStorage doesn't work across devices</h1>
+  <p class="intro" id="intro">Loading params…</p>
+
+  <div class="block">
+    <h2>1. Write dealId + installationType to localStorage</h2>
+    <pre id="code1"></pre>
+    <div class="result ok" id="res1">Running…</div>
+  </div>
+
+  <div class="block">
+    <h2>2. Read them back on this browser</h2>
+    <pre id="code2"></pre>
+    <div class="result ok" id="res2">Running…</div>
+  </div>
+
+  <div class="block">
+    <h2>3. Can we access tally.so's localStorage from here?</h2>
+    <pre>// localStorage is origin-scoped by the browser.
+// ik-jaspernf.github.io cannot read or write tally.so's storage.
+// Even if Tally saves answers there, we cannot see them.</pre>
+    <div class="result fail" id="res3">Running…</div>
+  </div>
+
+  <div class="block">
+    <h2>4. Open this URL on another device</h2>
+    <pre id="code4"></pre>
+    <div class="result warn" id="res4">Running…</div>
+  </div>
+
+  <div class="block">
+    <h2>Conclusion</h2>
+    <pre>// localStorage is:
+//   - Per-device       → phone ≠ laptop
+//   - Per-browser      → Chrome ≠ Safari on same device
+//   - Per-origin       → github.io ≠ tally.so
+//
+// Solution: use URL params built from the Tally API.
+// The API stores answers server-side — fetchable from any device.</pre>
+    <div class="result ok">✓ URL params (built from the API) work across every device and browser.</div>
+  </div>
+</div>
+
+<script>
+  const params          = new URLSearchParams(window.location.search);
+  const dealId          = params.get("dealId") || "(none)";
+  const installationType = params.get("installationType") || "(none)";
+
+  document.getElementById("intro").textContent =
+    `Running with dealId="${dealId}" and installationType="${installationType}" from the URL.`;
+
+  // 1. Write
+  document.getElementById("code1").textContent =
+    `localStorage.setItem("dealId", "${dealId}");\nlocalStorage.setItem("installationType", "${installationType}");`;
+  try {
+    localStorage.setItem("dealId", dealId);
+    localStorage.setItem("installationType", installationType);
+    localStorage.setItem("_savedAt", new Date().toISOString());
+    document.getElementById("res1").textContent = `✓ Saved to localStorage on this browser.`;
+  } catch(e) {
+    document.getElementById("res1").className = "result fail";
+    document.getElementById("res1").textContent = `✗ Failed: ${e.message}`;
+  }
+
+  // 2. Read back
+  const readDeal   = localStorage.getItem("dealId");
+  const readType   = localStorage.getItem("installationType");
+  document.getElementById("code2").textContent =
+    `localStorage.getItem("dealId")           // "${readDeal}"\nlocalStorage.getItem("installationType")  // "${readType}"`;
+  document.getElementById("res2").textContent =
+    `✓ Read back on THIS browser: dealId="${readDeal}", installationType="${readType}". Works here — but nowhere else.`;
+
+  // 3. Cross-origin (tally.so) — always null
+  const tallyVal = localStorage.getItem("tally_answers");
+  document.getElementById("res3").textContent =
+    `✗ localStorage.getItem("tally_answers") = ${JSON.stringify(tallyVal)}` +
+    ` — null. tally.so's storage is completely inaccessible from this origin.`;
+
+  // 4. Cross-device proof
+  const savedAt = localStorage.getItem("_savedAt");
+  document.getElementById("code4").textContent =
+    `// Value was saved at: ${savedAt}\n// Open this exact URL on your phone — "_savedAt" will be missing or different.`;
+  document.getElementById("res4").textContent =
+    `⚠ Saved at ${savedAt}. On a different device this will be null — proving localStorage is local to this browser only.`;
+</script>
+</body>
+</html>
