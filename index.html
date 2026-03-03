@@ -182,6 +182,12 @@
         tallyGet(`/forms/${FORM_ID}`)
       ]);
 
+      console.group("Tally API response");
+      console.log("subData:", subData);
+      console.log("formData:", formData);
+      console.log("submissions:", subData.submissions);
+      console.groupEnd();
+
       dbg(`Submissions returned: ${(subData.submissions||[]).length}`);
 
       // Build questionId → { title, type } map
@@ -222,12 +228,20 @@
         if (match) break;
       }
 
+      console.log("Looking for dealId:", dealId);
+      console.log("All submission answers:", subs.map(s => ({
+        id: s.id,
+        responses: s.responses
+      })));
+
       if (!match) {
         dbg(`No submission found for dealId="${dealId}" — loading fresh form`);
+        console.warn("No match found for dealId:", dealId);
         go({ installationType, dealId });
         return;
       }
 
+      console.log("Matched submission:", match);
       dbg(`Found submission id=${match.id} with ${match.responses?.length} responses`);
 
       const prefill  = { installationType, dealId };
@@ -264,6 +278,8 @@
         if (answer) prefill[param] = answer;
       }
 
+      console.log("Pre-fill params:", prefill);
+      console.log("File URLs:", fileUrls);
       dbg(`Pre-fill params: ${JSON.stringify(prefill)}`);
       dbg(`File uploads found: ${fileUrls.length}`);
       go(prefill, fileUrls);
