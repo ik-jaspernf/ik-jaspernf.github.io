@@ -144,7 +144,6 @@
     }
 
     function showForm(src, fileUrls = []) {
-      try { localStorage.clear(); } catch (e) {}
 
       if (fileUrls.length > 0) {
         // Show notice with thumbnails, then load iframe on continue
