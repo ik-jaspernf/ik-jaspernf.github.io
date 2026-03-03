@@ -205,12 +205,15 @@
 
         dbg(`${(subData.submissions||[]).length} submissions returned`);
 
+        // Build questionId → title from subData.questions (matches r.questionId)
         const titleMap = {};
-        (formData.blocks || []).forEach(b => {
-          if (b.type === "TITLE" && b.payload?.html)
-            titleMap[b.groupUuid] = b.payload.html.replace(/<[^>]+>/g, "");
+        (subData.questions || []).forEach(q => {
+          if (q.title) titleMap[q.id] = q.title;
         });
 
+        console.log("titleMap:", titleMap);
+
+        // Build option uuid → text from formData blocks
         const optionMap = {};
         (formData.blocks || []).forEach(b => {
           if ((b.type === "DROPDOWN_OPTION" || b.type === "CHECKBOXES_OPTION") && b.payload?.text)
