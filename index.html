@@ -6,7 +6,15 @@
   <title>Evnex Installation Survey</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { font-family: sans-serif; background: #f5f5f5; display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 24px; }
+    body { font-family: sans-serif; background: #f5f5f5; }
+
+    #overlay {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 24px;
+    }
 
     .card {
       background: #fff;
@@ -23,8 +31,8 @@
     #loading { text-align: center; color: #555; }
     #error   { display: none; color: #c00; }
     #error p { font-size: 0.85rem; color: #555; margin-top: 6px; }
-
     #notice  { display: none; }
+
     .warn-box {
       background: #fff8e1;
       border: 1px solid #ffe082;
@@ -53,250 +61,237 @@
       text-decoration: none;
     }
     .btn:hover { background: #333; }
+
+    #debug-list { font-size: 0.75rem; color: #aaa; margin-top: 16px; list-style: none; text-align: left; }
+
+    iframe {
+      display: none;
+      width: 100%;
+      height: 100vh;
+      border: none;
+    }
   </style>
 </head>
 <body>
-<div class="card">
 
-  <div id="loading">
-    <h1>Loading your survey…</h1>
-    <p class="sub" id="loading-sub">Fetching saved answers…</p>
-    <ul id="debug" style="font-size:0.75rem;color:#aaa;margin-top:16px;list-style:none;text-align:left;"></ul>
-  </div>
+  <div id="overlay">
+    <div class="card">
 
-  <div id="error">
-    <h1>Missing deal ID</h1>
-    <p>This page requires a <code>dealId</code> in the URL.<br>
-    Example: <code>?dealId=ABC123&amp;installationType=tier2</code></p>
-  </div>
+      <div id="loading">
+        <h1>Loading your survey…</h1>
+        <p class="sub" id="loading-sub">Fetching saved answers…</p>
+        <ul id="debug-list"></ul>
+      </div>
 
-  <div id="notice">
-    <h1>Resume Survey</h1>
-    <p class="sub" id="notice-sub"></p>
-    <div class="warn-box" id="files-box" style="display:none">
-      <strong>⚠ Previously uploaded photos (can't be pre-filled)</strong>
-      File uploads are stored on Tally's servers and cannot be injected into
-      the form from a different browser — browsers block cross-origin data access.
-      Your files are still saved. You may need to re-upload them:
-      <div class="thumb-grid" id="files-list"></div>
+      <div id="error">
+        <h1>Missing deal ID</h1>
+        <p>This page requires a <code>dealId</code> in the URL.<br>
+        Example: <code>?dealId=ABC123&amp;installationType=tier2</code></p>
+      </div>
+
+      <div id="notice">
+        <h1>Resume Survey</h1>
+        <p class="sub" id="notice-sub"></p>
+        <div class="warn-box" id="files-box" style="display:none">
+          <strong>⚠ Previously uploaded photos (can't be pre-filled)</strong>
+          File uploads can't be injected into the form from a different browser.
+          Your files are still saved — you may need to re-upload them:
+          <div class="thumb-grid" id="files-grid"></div>
+        </div>
+        <button class="btn" id="continue-btn">Continue survey →</button>
+      </div>
+
     </div>
-    <a class="btn" id="continue-btn" href="#">Continue survey →</a>
   </div>
 
-</div>
+  <iframe id="tally-frame" title="Evnex Installation Survey" allowfullscreen></iframe>
 
-<script>
-  const API_KEY  = "tly-0rqbHxcjA00vVWBE3cWtzajCMiSFY5jE";
-  const FORM_ID  = "KYMRok";
-  const BASE_URL = `https://tally.so/r/${FORM_ID}`;
+  <script>
+    const API_KEY  = "tly-0rqbHxcjA00vVWBE3cWtzajCMiSFY5jE";
+    const FORM_ID  = "KYMRok";
+    const BASE_URL = `https://tally.so/r/${FORM_ID}`;
 
-  // Explicit mapping: question title prefix → hidden field name
-  const TITLE_TO_PARAM = {
-    "Do you have solar?"                                     : "solar",
-    "Does your set-up include a home battery?"               : "battery",
-    "Do you want your battery to feed into your car?"        : "feedCar",
-    "Are you aware of any asbestos on your property?"        : "asbestos",
-    'Please provide details (e.g. "asbestos eves"'           : "asbestosLocation",
-    "Optional details"                                       : "optionalDetails",
-    "Describe where your switchboard is"                     : "swbLocation",
-    "Is your electricity meter located at your switchboard?" : "meter",
-    "Please provide a description of your desired charger"   : "chargerLocation",
-    "How can we access the cable route"                      : "cableAccess",
-    "Please add any additional information about the cable"  : "cableDetails",
-    "If you are getting your vehicle soon"                   : "deliveryDate",
-  };
+    const TITLE_TO_PARAM = {
+      "Do you have solar?"                                     : "solar",
+      "Does your set-up include a home battery?"               : "battery",
+      "Do you want your battery to feed into your car?"        : "feedCar",
+      "Are you aware of any asbestos on your property?"        : "asbestos",
+      'Please provide details (e.g. "asbestos eves"'           : "asbestosLocation",
+      "Optional details"                                       : "optionalDetails",
+      "Describe where your switchboard is"                     : "swbLocation",
+      "Is your electricity meter located at your switchboard?" : "meter",
+      "Please provide a description of your desired charger"   : "chargerLocation",
+      "How can we access the cable route"                      : "cableAccess",
+      "Please add any additional information about the cable"  : "cableDetails",
+      "If you are getting your vehicle soon"                   : "deliveryDate",
+    };
 
-  function titleToParam(title) {
-    for (const [prefix, param] of Object.entries(TITLE_TO_PARAM)) {
-      if (title.startsWith(prefix.slice(0, 30))) return param;
-    }
-    return null;
-  }
-
-  const urlParams        = new URLSearchParams(window.location.search);
-  const dealId           = urlParams.get("dealId");
-  const installationType = urlParams.get("installationType") || "tier1";
-
-  async function tallyGet(path) {
-    const target = `https://api.tally.so${path}`;
-    const res = await fetch(`https://corsproxy.io/?${encodeURIComponent(target)}`, {
-      headers: { Authorization: `Bearer ${API_KEY}` }
-    });
-    if (!res.ok) throw new Error(`${res.status}`);
-    return res.json();
-  }
-
-  function go(prefill, fileUrls = []) {
-    const url = `${BASE_URL}?${new URLSearchParams(prefill)}`;
-
-    // Clear localStorage so Tally always uses our pre-fill URL params
-    // instead of restoring a stale session from a previous visit on this browser
-    try { localStorage.clear(); } catch (e) {}
-
-    if (fileUrls.length === 0) {
-      // No files to warn about — redirect straight away
-      window.location.href = url;
-      return;
-    }
-
-    // Show notice with file links before redirecting
-    document.getElementById("notice-sub").textContent =
-      `Resuming survey for ${dealId}. Text answers have been pre-filled.`;
-
-    const grid = document.getElementById("files-list");
-    fileUrls.forEach(u => {
-      const a = document.createElement("a");
-      a.href = u;
-      a.target = "_blank";
-      a.innerHTML = `<img src="${u}" alt="Previously uploaded photo" />`;
-      grid.appendChild(a);
-    });
-
-    document.getElementById("files-box").style.display = "block";
-    document.getElementById("continue-btn").href = url;
-    document.getElementById("loading").style.display = "none";
-    document.getElementById("notice").style.display = "block";
-  }
-
-  function dbg(msg) {
-    const li = document.createElement("li");
-    li.textContent = `→ ${msg}`;
-    document.getElementById("debug").appendChild(li);
-  }
-
-  async function fetchAndLoad() {
-    if (!dealId) {
-      document.getElementById("loading").style.display = "none";
-      document.getElementById("error").style.display = "block";
-      return;
-    }
-
-    try {
-      document.getElementById("loading-sub").textContent =
-        `Looking up saved answers for ${dealId}…`;
-      dbg(`dealId="${dealId}" installationType="${installationType}"`);
-      dbg("Calling Tally API via corsproxy.io…");
-
-      const [subData, formData] = await Promise.all([
-        tallyGet(`/forms/${FORM_ID}/submissions?limit=100`),
-        tallyGet(`/forms/${FORM_ID}`)
-      ]);
-
-      console.group("Tally API response");
-      console.log("subData:", subData);
-      console.log("formData:", formData);
-      console.log("submissions:", subData.submissions);
-      console.groupEnd();
-
-      dbg(`Submissions returned: ${(subData.submissions||[]).length}`);
-
-      // Build questionId → { title, type } map
-      const questions = {};
-      const submissions = subData.questions || subData.fields || [];
-      // From formData blocks, map groupUuid → title
-      (formData.blocks || []).forEach(b => {
-        if (b.type === "TITLE" && b.payload?.html) {
-          questions[b.groupUuid] = b.payload.html.replace(/<[^>]+>/g, "");
-        }
-      });
-
-      // Build option uuid → text map
-      const optionMap = {};
-      (formData.blocks || []).forEach(b => {
-        if (b.type === "DROPDOWN_OPTION" && b.payload?.text) {
-          optionMap[b.uuid] = b.payload.text;
-        }
-      });
-
-      // Also map checkbox option uuid → text
-      (formData.blocks || []).forEach(b => {
-        if (b.type === "CHECKBOXES_OPTION" && b.payload?.text) {
-          optionMap[b.uuid] = b.payload.text;
-        }
-      });
-
-      const subs = subData.submissions || [];
-      console.log("Looking for dealId:", dealId);
-      console.log("All submissions:", subs.map(s => ({ id: s.id, completed: s.isCompleted, responses: s.responses })));
-
-      // 1. Try exact dealId match first
-      let match = null;
-      for (const sub of subs) {
-        if (sub.isCompleted) continue;
-        for (const r of sub.responses || []) {
-          const a = r.answer;
-          if (typeof a === "string" && a === dealId) { match = sub; break; }
-          if (typeof a === "object" && a !== null && Object.values(a).includes(dealId)) { match = sub; break; }
-        }
-        if (match) break;
+    function titleToParam(title) {
+      for (const [prefix, param] of Object.entries(TITLE_TO_PARAM)) {
+        if (title.startsWith(prefix.slice(0, 30))) return param;
       }
+      return null;
+    }
 
-      // 2. Fall back to latest partial submission with matching installationType
-      if (!match) {
-        console.warn("No dealId match — falling back to latest partial submission");
-        dbg("No dealId match — using latest partial submission");
-        match = subs.find(s => !s.isCompleted && s.responses?.some(r => {
-          const a = r.answer;
-          return typeof a === "object" && a !== null && a.installationType === installationType;
-        })) || subs.find(s => !s.isCompleted) || null;
+    const urlParams        = new URLSearchParams(window.location.search);
+    const dealId           = urlParams.get("dealId");
+    const installationType = urlParams.get("installationType") || "tier1";
+
+    function dbg(msg) {
+      const li = document.createElement("li");
+      li.textContent = `→ ${msg}`;
+      document.getElementById("debug-list").appendChild(li);
+    }
+
+    function showForm(src, fileUrls = []) {
+      try { localStorage.clear(); } catch (e) {}
+
+      if (fileUrls.length > 0) {
+        // Show notice with thumbnails, then load iframe on continue
+        const grid = document.getElementById("files-grid");
+        fileUrls.forEach(u => {
+          const a = document.createElement("a");
+          a.href = u; a.target = "_blank";
+          a.innerHTML = `<img src="${u}" alt="Uploaded photo" />`;
+          grid.appendChild(a);
+        });
+        document.getElementById("notice-sub").textContent =
+          `Resuming for ${dealId}. Text answers pre-filled. Photos below can't be restored.`;
+        document.getElementById("files-box").style.display = "block";
+        document.getElementById("continue-btn").onclick = () => loadIframe(src);
+        document.getElementById("loading").style.display = "none";
+        document.getElementById("notice").style.display = "block";
+      } else {
+        loadIframe(src);
       }
+    }
 
-      if (!match) {
-        dbg("No submissions found — loading fresh form");
-        go({ installationType, dealId });
+    function loadIframe(src) {
+      document.getElementById("overlay").style.display = "none";
+      const frame = document.getElementById("tally-frame");
+      frame.src = src;
+      frame.style.display = "block";
+    }
+
+    async function tallyGet(path) {
+      const target = `https://api.tally.so${path}`;
+      const res = await fetch(`https://corsproxy.io/?${encodeURIComponent(target)}`, {
+        headers: { Authorization: `Bearer ${API_KEY}` }
+      });
+      if (!res.ok) throw new Error(`${res.status}`);
+      return res.json();
+    }
+
+    async function fetchAndLoad() {
+      if (!dealId) {
+        document.getElementById("loading").style.display = "none";
+        document.getElementById("error").style.display = "block";
         return;
       }
 
-      console.log("Using submission:", match);
-      dbg(`Using submission id=${match.id} with ${match.responses?.length} responses`);
+      try {
+        dbg(`dealId="${dealId}" installationType="${installationType}"`);
+        dbg("Calling Tally API…");
 
-      const prefill  = { installationType, dealId };
-      const fileUrls = [];
+        const [subData, formData] = await Promise.all([
+          tallyGet(`/forms/${FORM_ID}/submissions?limit=100`),
+          tallyGet(`/forms/${FORM_ID}`)
+        ]);
 
-      for (const r of match.responses || []) {
-        const answer = r.answer;
+        console.group("Tally API");
+        console.log("subData:", subData);
+        console.log("formData:", formData);
+        console.groupEnd();
 
-        // Hidden fields (installationType, dealId)
-        if (typeof answer === "object" && answer !== null && !Array.isArray(answer) && !answer.url) {
-          Object.entries(answer).forEach(([k, v]) => { prefill[k] = v; });
-          continue;
+        dbg(`${(subData.submissions||[]).length} submissions returned`);
+
+        const titleMap = {};
+        (formData.blocks || []).forEach(b => {
+          if (b.type === "TITLE" && b.payload?.html)
+            titleMap[b.groupUuid] = b.payload.html.replace(/<[^>]+>/g, "");
+        });
+
+        const optionMap = {};
+        (formData.blocks || []).forEach(b => {
+          if ((b.type === "DROPDOWN_OPTION" || b.type === "CHECKBOXES_OPTION") && b.payload?.text)
+            optionMap[b.uuid] = b.payload.text;
+        });
+
+        const subs = subData.submissions || [];
+
+        // 1. Exact dealId match
+        let match = null;
+        for (const sub of subs) {
+          if (sub.isCompleted) continue;
+          for (const r of sub.responses || []) {
+            const a = r.answer;
+            if (typeof a === "string" && a === dealId) { match = sub; break; }
+            if (typeof a === "object" && a !== null && Object.values(a).includes(dealId)) { match = sub; break; }
+          }
+          if (match) break;
         }
 
-        // File uploads
-        if (Array.isArray(answer) && answer[0]?.url) {
-          answer.forEach(f => fileUrls.push(f.url));
-          continue;
+        // 2. Fall back to latest partial with matching installationType
+        if (!match) {
+          dbg("No dealId match — using latest partial submission");
+          match = subs.find(s => !s.isCompleted && s.responses?.some(r => {
+            const a = r.answer;
+            return typeof a === "object" && a !== null && a.installationType === installationType;
+          })) || subs.find(s => !s.isCompleted) || null;
         }
 
-        // Get question title from our map
-        const title = questions[r.questionId] || "";
-        const param = titleToParam(title);
-        if (!param) continue;
-
-        // Dropdown — array of option UUIDs
-        if (Array.isArray(answer)) {
-          const text = answer.map(v => optionMap[v] || v).join(", ");
-          if (text) prefill[param] = text;
-          continue;
+        if (!match) {
+          dbg("No submissions — loading fresh form");
+          showForm(`${BASE_URL}?${new URLSearchParams({ installationType, dealId })}`);
+          return;
         }
 
-        // Text / date / other
-        if (answer) prefill[param] = answer;
+        console.log("Using submission:", match);
+        dbg(`Using submission id=${match.id}`);
+
+        const prefill  = { installationType, dealId };
+        const fileUrls = [];
+
+        for (const r of match.responses || []) {
+          const answer = r.answer;
+
+          if (typeof answer === "object" && answer !== null && !Array.isArray(answer) && !answer?.url) {
+            Object.entries(answer).forEach(([k, v]) => { prefill[k] = v; });
+            continue;
+          }
+
+          if (Array.isArray(answer) && answer[0]?.url) {
+            answer.forEach(f => fileUrls.push(f.url));
+            continue;
+          }
+
+          const title = titleMap[r.questionId] || "";
+          const param = titleToParam(title);
+          if (!param) continue;
+
+          if (Array.isArray(answer)) {
+            const text = answer.map(v => optionMap[v] || v).join(", ");
+            if (text) prefill[param] = text;
+          } else if (answer) {
+            prefill[param] = answer;
+          }
+        }
+
+        console.log("Pre-fill params:", prefill);
+        console.log("File URLs:", fileUrls);
+        dbg(`Pre-fill: ${JSON.stringify(prefill)}`);
+
+        showForm(`${BASE_URL}?${new URLSearchParams(prefill)}`, fileUrls);
+
+      } catch (err) {
+        dbg(`ERROR: ${err.message}`);
+        console.error("Fetch failed:", err);
+        showForm(`${BASE_URL}?${new URLSearchParams({ installationType, dealId })}`);
       }
-
-      console.log("Pre-fill params:", prefill);
-      console.log("File URLs:", fileUrls);
-      dbg(`Pre-fill params: ${JSON.stringify(prefill)}`);
-      dbg(`File uploads found: ${fileUrls.length}`);
-      go(prefill, fileUrls);
-
-    } catch (err) {
-      dbg(`ERROR: ${err.message} — loading fresh form`);
-      go({ installationType, dealId });
     }
-  }
 
-  fetchAndLoad();
-</script>
+    fetchAndLoad();
+  </script>
+
 </body>
 </html>
