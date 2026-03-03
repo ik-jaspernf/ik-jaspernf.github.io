@@ -61,6 +61,7 @@
   <div id="loading">
     <h1>Loading your survey…</h1>
     <p class="sub" id="loading-sub">Fetching saved answers…</p>
+    <ul id="debug" style="font-size:0.75rem;color:#aaa;margin-top:16px;list-style:none;text-align:left;"></ul>
   </div>
 
   <div id="error">
@@ -157,6 +158,12 @@
     document.getElementById("notice").style.display = "block";
   }
 
+  function dbg(msg) {
+    const li = document.createElement("li");
+    li.textContent = `→ ${msg}`;
+    document.getElementById("debug").appendChild(li);
+  }
+
   async function fetchAndLoad() {
     if (!dealId) {
       document.getElementById("loading").style.display = "none";
@@ -167,11 +174,15 @@
     try {
       document.getElementById("loading-sub").textContent =
         `Looking up saved answers for ${dealId}…`;
+      dbg(`dealId="${dealId}" installationType="${installationType}"`);
+      dbg("Calling Tally API via corsproxy.io…");
 
       const [subData, formData] = await Promise.all([
         tallyGet(`/forms/${FORM_ID}/submissions?limit=100`),
         tallyGet(`/forms/${FORM_ID}`)
       ]);
+
+      dbg(`Submissions returned: ${(subData.submissions||[]).length}`);
 
       // Build questionId → { title, type } map
       const questions = {};
@@ -212,9 +223,12 @@
       }
 
       if (!match) {
+        dbg(`No submission found for dealId="${dealId}" — loading fresh form`);
         go({ installationType, dealId });
         return;
       }
+
+      dbg(`Found submission id=${match.id} with ${match.responses?.length} responses`);
 
       const prefill  = { installationType, dealId };
       const fileUrls = [];
@@ -250,11 +264,12 @@
         if (answer) prefill[param] = answer;
       }
 
+      dbg(`Pre-fill params: ${JSON.stringify(prefill)}`);
+      dbg(`File uploads found: ${fileUrls.length}`);
       go(prefill, fileUrls);
 
     } catch (err) {
-      console.warn("API fetch failed:", err.message);
-      // Fall back to loading the form fresh
+      dbg(`ERROR: ${err.message} — loading fresh form`);
       go({ installationType, dealId });
     }
   }
