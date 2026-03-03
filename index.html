@@ -128,6 +128,10 @@
   function go(prefill, fileUrls = []) {
     const url = `${BASE_URL}?${new URLSearchParams(prefill)}`;
 
+    // Clear localStorage so Tally always uses our pre-fill URL params
+    // instead of restoring a stale session from a previous visit on this browser
+    try { localStorage.clear(); } catch (e) {}
+
     if (fileUrls.length === 0) {
       // No files to warn about — redirect straight away
       window.location.href = url;
