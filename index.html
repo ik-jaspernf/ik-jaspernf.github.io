@@ -8,29 +8,69 @@
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { font-family: sans-serif; background: #f5f5f5; }
 
-    #loading {
+    #loading, #error, #resume {
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      height: 100vh;
-      gap: 12px;
-      color: #555;
-    }
-
-    #error {
-      display: none;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      height: 100vh;
-      gap: 12px;
-      color: #c00;
-      text-align: center;
+      min-height: 100vh;
       padding: 24px;
     }
 
-    #error p { font-size: 0.9rem; color: #555; max-width: 400px; }
+    #error { display: none; color: #c00; text-align: center; }
+    #error p { font-size: 0.875rem; color: #555; max-width: 400px; margin-top: 8px; }
+
+    #resume {
+      display: none;
+      align-items: flex-start;
+      justify-content: flex-start;
+      padding: 32px 24px;
+    }
+
+    .card {
+      background: #fff;
+      border-radius: 12px;
+      padding: 28px;
+      width: 100%;
+      max-width: 520px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+    }
+
+    .card h1 { font-size: 1.1rem; margin-bottom: 4px; }
+    .card .sub { font-size: 0.8rem; color: #888; margin-bottom: 20px; }
+
+    .section-title {
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: #aaa;
+      margin-bottom: 10px;
+    }
+
+    .uploads { list-style: none; margin-bottom: 24px; }
+    .uploads li { margin-bottom: 8px; }
+    .uploads a {
+      font-size: 0.875rem;
+      color: #007aff;
+      word-break: break-all;
+      text-decoration: none;
+    }
+    .uploads a:hover { text-decoration: underline; }
+
+    .btn {
+      display: block;
+      width: 100%;
+      padding: 13px;
+      background: #111;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-size: 1rem;
+      cursor: pointer;
+      text-align: center;
+    }
+    .btn:hover { background: #333; }
 
     iframe {
       display: none;
@@ -38,6 +78,8 @@
       height: 100vh;
       border: none;
     }
+
+    #loading { color: #555; gap: 12px; }
   </style>
 </head>
 <body>
@@ -56,6 +98,20 @@
     Example: <code>?globalId=ABC123&amp;installationType=tier2</code></p>
   </div>
 
+  <div id="resume">
+    <div class="card">
+      <h1>Resume Survey</h1>
+      <div class="sub" id="resume-sub"></div>
+
+      <div id="uploads-section" style="display:none">
+        <div class="section-title">Previously uploaded photos</div>
+        <ul class="uploads" id="uploads-list"></ul>
+      </div>
+
+      <button class="btn" onclick="openForm()">Continue survey →</button>
+    </div>
+  </div>
+
   <iframe id="tally-frame" title="Evnex Installation Survey" allowfullscreen></iframe>
 
   <script>
@@ -69,15 +125,15 @@
 
     const loading = document.getElementById("loading");
     const error   = document.getElementById("error");
+    const resume  = document.getElementById("resume");
     const frame   = document.getElementById("tally-frame");
 
-    function loadForm(extraParams = {}) {
-      const tallyParams = new URLSearchParams({ installationType, globalId, ...extraParams });
-      frame.src = `${BASE_URL}?${tallyParams}`;
-      frame.onload = () => {
-        loading.style.display = "none";
-        frame.style.display = "block";
-      };
+    let formUrl = BASE_URL;
+
+    function openForm() {
+      resume.style.display = "none";
+      frame.style.display = "block";
+      frame.src = formUrl;
     }
 
     async function tallyGet(path) {
@@ -97,13 +153,12 @@
       }
 
       try {
-        // Fetch submissions + form blocks in parallel
         const [subData, formData] = await Promise.all([
           tallyGet(`/forms/${FORM_ID}/submissions?limit=100`),
           tallyGet(`/forms/${FORM_ID}`)
         ]);
 
-        // Build questionId → title map
+        // questionId → title
         const titleMap = {};
         (formData.blocks || []).forEach(b => {
           if (b.type === "TITLE" && b.payload?.html) {
@@ -111,7 +166,7 @@
           }
         });
 
-        // Build uuid → dropdown option text map
+        // uuid → dropdown option text
         const optionMap = {};
         (formData.blocks || []).forEach(b => {
           if (b.type === "DROPDOWN_OPTION" && b.payload?.text) {
@@ -119,10 +174,9 @@
           }
         });
 
-        // Find partial submission matching this dealId
+        // Find partial submission matching globalId
         const submissions = subData.submissions || [];
         let match = null;
-
         for (const sub of submissions) {
           if (sub.isCompleted) continue;
           for (const r of sub.responses || []) {
@@ -134,21 +188,33 @@
         }
 
         if (!match) {
-          // No prior submission — load fresh form
-          loadForm();
+          // No prior answers — go straight to fresh form
+          formUrl = `${BASE_URL}?${new URLSearchParams({ installationType, globalId })}`;
+          loading.style.display = "none";
+          openForm();
           return;
         }
 
-        // Build pre-fill params from saved responses
-        const prefill = {};
+        // Separate file uploads from other answers
+        const prefill  = { installationType, globalId };
+        const fileUrls = [];
+
         for (const r of match.responses || []) {
           let value = r.answer;
+
+          // File upload answers come as arrays of objects with a `url` field
+          if (Array.isArray(value) && value[0]?.url) {
+            value.forEach(f => fileUrls.push(f.url));
+            continue;
+          }
+
           if (Array.isArray(value)) {
             value = value.map(v => optionMap[v] || v).join(", ");
           } else if (typeof value === "object" && value !== null) {
-            Object.entries(value).forEach(([k, v]) => { if (k !== "dealId") prefill[k] = v; });
+            Object.entries(value).forEach(([k, v]) => { if (k !== "globalId") prefill[k] = v; });
             continue;
           }
+
           const title = titleMap[r.questionId];
           if (value && title) {
             const key = title.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "");
@@ -156,12 +222,30 @@
           }
         }
 
-        loadForm(prefill);
+        formUrl = `${BASE_URL}?${new URLSearchParams(prefill)}`;
+
+        // Show resume screen
+        document.getElementById("resume-sub").textContent =
+          `Continuing survey for ${globalId}`;
+
+        if (fileUrls.length > 0) {
+          const list = document.getElementById("uploads-list");
+          fileUrls.forEach((url, i) => {
+            const li = document.createElement("li");
+            li.innerHTML = `<a href="${url}" target="_blank">Photo ${i + 1}: ${url}</a>`;
+            list.appendChild(li);
+          });
+          document.getElementById("uploads-section").style.display = "block";
+        }
+
+        loading.style.display = "none";
+        resume.style.display = "flex";
 
       } catch (err) {
-        // CORS or network error — fall back to loading form without pre-fill
         console.warn("API fetch failed, loading form without pre-fill:", err.message);
-        loadForm();
+        formUrl = `${BASE_URL}?${new URLSearchParams({ installationType, globalId })}`;
+        loading.style.display = "none";
+        openForm();
       }
     }
 
