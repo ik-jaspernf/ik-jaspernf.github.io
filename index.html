@@ -35,9 +35,9 @@
       margin-bottom: 16px;
     }
     .warn-box strong { display: block; margin-bottom: 6px; }
-    .warn-box ul { padding-left: 18px; margin-top: 6px; }
-    .warn-box li { margin-bottom: 4px; }
-    .warn-box a { color: #007aff; word-break: break-all; }
+    .thumb-grid { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+    .thumb-grid a { display: block; width: 80px; height: 80px; border-radius: 6px; overflow: hidden; border: 1px solid #ffe082; }
+    .thumb-grid img { width: 100%; height: 100%; object-fit: cover; display: block; }
 
     .btn {
       display: block;
@@ -76,8 +76,8 @@
       <strong>⚠ Previously uploaded photos (can't be pre-filled)</strong>
       File uploads are stored on Tally's servers and cannot be injected into
       the form from a different browser — browsers block cross-origin data access.
-      Your files are still saved and visible in your submission:
-      <ul id="files-list"></ul>
+      Your files are still saved. You may need to re-upload them:
+      <div class="thumb-grid" id="files-list"></div>
     </div>
     <a class="btn" id="continue-btn" href="#">Continue survey →</a>
   </div>
@@ -138,11 +138,13 @@
     document.getElementById("notice-sub").textContent =
       `Resuming survey for ${dealId}. Text answers have been pre-filled.`;
 
-    const list = document.getElementById("files-list");
-    fileUrls.forEach((u, i) => {
-      const li = document.createElement("li");
-      li.innerHTML = `<a href="${u}" target="_blank">Photo ${i + 1}</a>`;
-      list.appendChild(li);
+    const grid = document.getElementById("files-list");
+    fileUrls.forEach(u => {
+      const a = document.createElement("a");
+      a.href = u;
+      a.target = "_blank";
+      a.innerHTML = `<img src="${u}" alt="Previously uploaded photo" />`;
+      grid.appendChild(a);
     });
 
     document.getElementById("files-box").style.display = "block";
