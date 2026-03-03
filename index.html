@@ -94,8 +94,8 @@
 
   <div id="error">
     <strong>Missing global ID</strong>
-    <p>This page requires a <code>globalId</code> in the URL.<br>
-    Example: <code>?globalId=ABC123&amp;installationType=tier2</code></p>
+    <p>This page requires a <code>dealId</code> in the URL.<br>
+    Example: <code>?dealId=ABC123&amp;installationType=tier2</code></p>
   </div>
 
   <div id="resume">
@@ -120,7 +120,7 @@
     const BASE_URL = `https://tally.so/r/${FORM_ID}`;
 
     const params           = new URLSearchParams(window.location.search);
-    const globalId         = params.get("globalId");
+    const dealId         = params.get("dealId");
     const installationType = params.get("installationType") || "tier1";
 
     const loading = document.getElementById("loading");
@@ -146,7 +146,7 @@
     }
 
     async function fetchAndLoad() {
-      if (!globalId) {
+      if (!dealId) {
         loading.style.display = "none";
         error.style.display = "flex";
         return;
@@ -174,29 +174,29 @@
           }
         });
 
-        // Find partial submission matching globalId
+        // Find partial submission matching dealId
         const submissions = subData.submissions || [];
         let match = null;
         for (const sub of submissions) {
           if (sub.isCompleted) continue;
           for (const r of sub.responses || []) {
             const a = r.answer;
-            if (typeof a === "string" && a === globalId) { match = sub; break; }
-            if (typeof a === "object" && a !== null && Object.values(a).includes(globalId)) { match = sub; break; }
+            if (typeof a === "string" && a === dealId) { match = sub; break; }
+            if (typeof a === "object" && a !== null && Object.values(a).includes(dealId)) { match = sub; break; }
           }
           if (match) break;
         }
 
         if (!match) {
           // No prior answers — go straight to fresh form
-          formUrl = `${BASE_URL}?${new URLSearchParams({ installationType, globalId })}`;
+          formUrl = `${BASE_URL}?${new URLSearchParams({ installationType, dealId })}`;
           loading.style.display = "none";
           openForm();
           return;
         }
 
         // Separate file uploads from other answers
-        const prefill  = { installationType, globalId };
+        const prefill  = { installationType, dealId };
         const fileUrls = [];
 
         for (const r of match.responses || []) {
@@ -211,7 +211,7 @@
           if (Array.isArray(value)) {
             value = value.map(v => optionMap[v] || v).join(", ");
           } else if (typeof value === "object" && value !== null) {
-            Object.entries(value).forEach(([k, v]) => { if (k !== "globalId") prefill[k] = v; });
+            Object.entries(value).forEach(([k, v]) => { if (k !== "dealId") prefill[k] = v; });
             continue;
           }
 
@@ -226,7 +226,7 @@
 
         // Show resume screen
         document.getElementById("resume-sub").textContent =
-          `Continuing survey for ${globalId}`;
+          `Continuing survey for ${dealId}`;
 
         if (fileUrls.length > 0) {
           const list = document.getElementById("uploads-list");
@@ -243,7 +243,7 @@
 
       } catch (err) {
         console.warn("API fetch failed, loading form without pre-fill:", err.message);
-        formUrl = `${BASE_URL}?${new URLSearchParams({ installationType, globalId })}`;
+        formUrl = `${BASE_URL}?${new URLSearchParams({ installationType, dealId })}`;
         loading.style.display = "none";
         openForm();
       }
