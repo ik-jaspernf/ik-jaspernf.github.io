@@ -59,32 +59,112 @@
   <iframe id="tally-frame" title="Evnex Installation Survey" allowfullscreen></iframe>
 
   <script>
-    const FORM_ID = "9qd5op";
+    const API_KEY  = "tly-0rqbHxcjA00vVWBE3cWtzajCMiSFY5jE";
+    const FORM_ID  = "9qd5op";
     const BASE_URL = `https://tally.so/r/${FORM_ID}`;
 
-    const params = new URLSearchParams(window.location.search);
-    const dealId = params.get("dealId");
+    const params          = new URLSearchParams(window.location.search);
+    const dealId          = params.get("dealId");
     const installationType = params.get("installationType") || "tier1";
 
     const loading = document.getElementById("loading");
-    const error = document.getElementById("error");
-    const frame = document.getElementById("tally-frame");
+    const error   = document.getElementById("error");
+    const frame   = document.getElementById("tally-frame");
 
-    if (!dealId) {
-      loading.style.display = "none";
-      error.style.display = "flex";
-    } else {
-      const tallyParams = new URLSearchParams({
-        installationType,
-        dealId,
-      });
-
+    function loadForm(extraParams = {}) {
+      const tallyParams = new URLSearchParams({ installationType, dealId, ...extraParams });
       frame.src = `${BASE_URL}?${tallyParams}`;
       frame.onload = () => {
         loading.style.display = "none";
         frame.style.display = "block";
       };
     }
+
+    async function tallyGet(path) {
+      const res = await fetch(`https://api.tally.so${path}`, {
+        headers: { Authorization: `Bearer ${API_KEY}` }
+      });
+      if (!res.ok) throw new Error(`${res.status}`);
+      return res.json();
+    }
+
+    async function fetchAndLoad() {
+      if (!dealId) {
+        loading.style.display = "none";
+        error.style.display = "flex";
+        return;
+      }
+
+      try {
+        // Fetch submissions + form blocks in parallel
+        const [subData, formData] = await Promise.all([
+          tallyGet(`/forms/${FORM_ID}/submissions?limit=100`),
+          tallyGet(`/forms/${FORM_ID}`)
+        ]);
+
+        // Build questionId → title map
+        const titleMap = {};
+        (formData.blocks || []).forEach(b => {
+          if (b.type === "TITLE" && b.payload?.html) {
+            titleMap[b.groupUuid] = b.payload.html.replace(/<[^>]+>/g, "");
+          }
+        });
+
+        // Build uuid → dropdown option text map
+        const optionMap = {};
+        (formData.blocks || []).forEach(b => {
+          if (b.type === "DROPDOWN_OPTION" && b.payload?.text) {
+            optionMap[b.uuid] = b.payload.text;
+          }
+        });
+
+        // Find partial submission matching this dealId
+        const submissions = subData.submissions || [];
+        let match = null;
+
+        for (const sub of submissions) {
+          if (sub.isCompleted) continue;
+          for (const r of sub.responses || []) {
+            const a = r.answer;
+            if (typeof a === "string" && a === dealId) { match = sub; break; }
+            if (typeof a === "object" && a !== null && Object.values(a).includes(dealId)) { match = sub; break; }
+          }
+          if (match) break;
+        }
+
+        if (!match) {
+          // No prior submission — load fresh form
+          loadForm();
+          return;
+        }
+
+        // Build pre-fill params from saved responses
+        const prefill = {};
+        for (const r of match.responses || []) {
+          let value = r.answer;
+          if (Array.isArray(value)) {
+            value = value.map(v => optionMap[v] || v).join(", ");
+          } else if (typeof value === "object" && value !== null) {
+            Object.entries(value).forEach(([k, v]) => { if (k !== "dealId") prefill[k] = v; });
+            continue;
+          }
+          const title = titleMap[r.questionId];
+          if (value && title) {
+            const key = title.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "");
+            prefill[key] = value;
+          }
+        }
+
+        loadForm(prefill);
+
+      } catch (err) {
+        // CORS or network error — fall back to loading form without pre-fill
+        console.warn("API fetch failed, loading form without pre-fill:", err.message);
+        loadForm();
+      }
+    }
+
+    fetchAndLoad();
   </script>
 
 </body>
