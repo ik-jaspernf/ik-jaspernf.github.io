@@ -51,20 +51,20 @@
   </div>
 
   <div id="error">
-    <strong>Missing deal ID</strong>
-    <p>This page requires a <code>dealId</code> in the URL.<br>
-    Example: <code>?dealId=ABC123&amp;installationType=tier2</code></p>
+    <strong>Missing global ID</strong>
+    <p>This page requires a <code>globalId</code> in the URL.<br>
+    Example: <code>?globalId=ABC123&amp;installationType=tier2</code></p>
   </div>
 
   <iframe id="tally-frame" title="Evnex Installation Survey" allowfullscreen></iframe>
 
   <script>
     const API_KEY  = "tly-0rqbHxcjA00vVWBE3cWtzajCMiSFY5jE";
-    const FORM_ID  = "9qd5op";
+    const FORM_ID  = "KYMRok";
     const BASE_URL = `https://tally.so/r/${FORM_ID}`;
 
-    const params          = new URLSearchParams(window.location.search);
-    const dealId          = params.get("dealId");
+    const params           = new URLSearchParams(window.location.search);
+    const globalId         = params.get("globalId");
     const installationType = params.get("installationType") || "tier1";
 
     const loading = document.getElementById("loading");
@@ -72,7 +72,7 @@
     const frame   = document.getElementById("tally-frame");
 
     function loadForm(extraParams = {}) {
-      const tallyParams = new URLSearchParams({ installationType, dealId, ...extraParams });
+      const tallyParams = new URLSearchParams({ installationType, globalId, ...extraParams });
       frame.src = `${BASE_URL}?${tallyParams}`;
       frame.onload = () => {
         loading.style.display = "none";
@@ -90,7 +90,7 @@
     }
 
     async function fetchAndLoad() {
-      if (!dealId) {
+      if (!globalId) {
         loading.style.display = "none";
         error.style.display = "flex";
         return;
@@ -127,8 +127,8 @@
           if (sub.isCompleted) continue;
           for (const r of sub.responses || []) {
             const a = r.answer;
-            if (typeof a === "string" && a === dealId) { match = sub; break; }
-            if (typeof a === "object" && a !== null && Object.values(a).includes(dealId)) { match = sub; break; }
+            if (typeof a === "string" && a === globalId) { match = sub; break; }
+            if (typeof a === "object" && a !== null && Object.values(a).includes(globalId)) { match = sub; break; }
           }
           if (match) break;
         }
