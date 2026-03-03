@@ -81,7 +81,8 @@
     }
 
     async function tallyGet(path) {
-      const res = await fetch(`https://api.tally.so${path}`, {
+      const target = `https://api.tally.so${path}`;
+      const res = await fetch(`https://corsproxy.io/?${encodeURIComponent(target)}`, {
         headers: { Authorization: `Bearer ${API_KEY}` }
       });
       if (!res.ok) throw new Error(`${res.status}`);
