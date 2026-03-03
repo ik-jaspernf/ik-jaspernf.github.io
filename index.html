@@ -215,8 +215,11 @@
         }
       });
 
-      // Find partial submission matching dealId
       const subs = subData.submissions || [];
+      console.log("Looking for dealId:", dealId);
+      console.log("All submissions:", subs.map(s => ({ id: s.id, completed: s.isCompleted, responses: s.responses })));
+
+      // 1. Try exact dealId match first
       let match = null;
       for (const sub of subs) {
         if (sub.isCompleted) continue;
@@ -228,21 +231,24 @@
         if (match) break;
       }
 
-      console.log("Looking for dealId:", dealId);
-      console.log("All submission answers:", subs.map(s => ({
-        id: s.id,
-        responses: s.responses
-      })));
+      // 2. Fall back to latest partial submission with matching installationType
+      if (!match) {
+        console.warn("No dealId match — falling back to latest partial submission");
+        dbg("No dealId match — using latest partial submission");
+        match = subs.find(s => !s.isCompleted && s.responses?.some(r => {
+          const a = r.answer;
+          return typeof a === "object" && a !== null && a.installationType === installationType;
+        })) || subs.find(s => !s.isCompleted) || null;
+      }
 
       if (!match) {
-        dbg(`No submission found for dealId="${dealId}" — loading fresh form`);
-        console.warn("No match found for dealId:", dealId);
+        dbg("No submissions found — loading fresh form");
         go({ installationType, dealId });
         return;
       }
 
-      console.log("Matched submission:", match);
-      dbg(`Found submission id=${match.id} with ${match.responses?.length} responses`);
+      console.log("Using submission:", match);
+      dbg(`Using submission id=${match.id} with ${match.responses?.length} responses`);
 
       const prefill  = { installationType, dealId };
       const fileUrls = [];
